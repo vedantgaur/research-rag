@@ -1,3 +1,129 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* styles/globals.css or styles/Answer.module.css */
+
+.sources-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  
+  .sources-table td {
+    border: 1px solid white;
+    padding: 8px;
+    color: white;
+  }
+  
+  .sources-table tr:first-child td {
+    border-top: none;
+  }
+  
+  .sources-table tr td:first-child {
+    border-left: none;
+  }
+  
+  .sources-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .sources-table tr td:last-child {
+    border-right: none;
+  }
+
+  .answer-content p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+  }
+  
+  .answer-content ul {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+  }
+  
+  .answer-content li {
+    margin-bottom: 0.5rem;
+  }
+  
+  .answer-content a {
+    color: #3b82f6;
+    text-decoration: underline;
+  }
+  
+  .answer-content a:hover {
+    text-decoration: none;
+  }
+  
+  .answer-content p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+  }
+  
+  .answer-content ul {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+  }
+  
+  .answer-content li {
+    margin-bottom: 0.5rem;
+  }
+  
+  .answer-content sup {
+    font-size: 0.75em;
+    vertical-align: super;
+    line-height: 0;
+  }
+  
+  .answer-content {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  
+  .answer-content p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+    text-align: justify;
+  }
+  
+  .answer-content ul {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+  }
+  
+  .answer-content li {
+    margin-bottom: 0.5rem;
+  }
+  
+  .answer-content sup {
+    font-size: 0.75em;
+    vertical-align: super;
+    line-height: 0;
+  }
+  
+  .answer-content a {
+    text-decoration: none;
+  }
+  
+  .answer-content a:hover {
+    text-decoration: underline;
+  }
+  
+  @media (min-width: 640px) {
+    .answer-content {
+      max-width: 90%;
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .answer-content {
+      max-width: 80%;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .answer-content {
+      max-width: 70%;
+    }
+  }      
+  

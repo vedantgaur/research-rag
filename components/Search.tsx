@@ -4,6 +4,7 @@ import endent from "endent";
 import { FC, KeyboardEvent, useEffect, useRef, useState } from "react";
 import axios from 'axios';
 import cheerio from 'cheerio';
+import { GPTSummary } from "@/utils/gptSummary";
 
 interface SearchProps {
   onSearch: (searchResult: SearchQuery) => void;
@@ -145,8 +146,16 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
         throw new Error("No sources found. Please try a different query.");
       }
 
-      await handleStream(allSources);
-    } catch (error: unknown) {
+      const sourcesWithSummaries = await Promise.all(allSources.map(async (source) => {
+        if (source.text && apiKey) {
+          const summary = await GPTSummary(source.text, apiKey);
+          return { ...source, summary };
+        }
+        return { ...source, summary: "No summary available" };
+      }));
+  
+      await handleStream(sourcesWithSummaries);
+      } catch (error: unknown) {
       console.error('Error in handleSearch:', error);
       setLoading(false);
       if (error instanceof Error) {
@@ -159,7 +168,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
 
   const handleStream = async (sources: Source[]) => {
     try {
-      const prompt = endent`Provide an extensive (long, multi-paragraph, detailed) summary of the arXiv and PubMed papers related to the query "${query}". Be original, concise, accurate, and helpful, and separate each paper. Cite sources as [1], [2], [3] , ..., etc. after each sentence to back up your answer.
+      const prompt = endent`Provide an extensive and detailed, but concise summary/synthesis of the arXiv and PubMed papers related to the query "${query}". Be original, concise, accurate, and helpful. Cite sources as [1], [2], [3] , ..., etc. after each sentence to back up your answer.
 
       ${sources.map((source, idx) => `Source [${idx + 1}]:\nTitle: ${source.title}\nSummary: ${source.text}`).join("\n\n")}
       `;
@@ -178,8 +187,12 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
       }
 
       setLoading(false);
-      onSearch({ query, sourceLinks: sources.map((source) => source.url) });
-
+      onSearch({ 
+        query, 
+        sourceLinks: sources.map((source) => source.url), 
+        sourcesWithSummaries: sources
+      });
+    
       const data = response.body;
       if (!data) {
         throw new Error("No data received from server");
