@@ -23,7 +23,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
   const fetchSources = async (query: string): Promise<Source[]> => {
     try {
       console.log('Fetching arXiv sources for query:', query);
-      const response = await axios.get(`http://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=10`);
+      const response = await axios.get(`http://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=5`);
       const xml = response.data;
       const $ = cheerio.load(xml, { xmlMode: true });
   
@@ -55,7 +55,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
   const fetchPubMedSources = async (query: string): Promise<Source[]> => {
     try {
       console.log('Fetching PubMed sources for query:', query);
-      const searchResponse = await axios.get(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(query)}&retmax=10&format=json`);
+      const searchResponse = await axios.get(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(query)}&retmax=5&format=json`);
       const ids: string[] = searchResponse.data.esearchresult.idlist;
   
       if (ids.length === 0) {
@@ -90,7 +90,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
       alert("Please enter a query");
       return;
     }
-
+  
     setLoading(true);
     try {
       console.log('Starting search for query:', query);
@@ -100,7 +100,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
       User query: "${query}"
       
       Searchable query:`;
-
+  
       const searchableQueryResponse = await fetch("/api/answer", {
         method: "POST",
         headers: {
@@ -108,31 +108,32 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
         },
         body: JSON.stringify({ prompt: searchableQueryPrompt, apiKey })
       });
-
-      if (!searchableQueryResponse.ok) {
-        const errorText = await searchableQueryResponse.text();
-        throw new Error(`Failed to generate searchable query: ${searchableQueryResponse.status} ${searchableQueryResponse.statusText}\n${errorText}`);
-      }
-
+  
       const responseText = await searchableQueryResponse.text();
-      console.log('Raw response:', responseText);
-
+      console.log('Raw API Response:', responseText);
+  
+      if (!searchableQueryResponse.ok) {
+        throw new Error(`Failed to generate searchable query: ${searchableQueryResponse.status} ${searchableQueryResponse.statusText}\n${responseText}`);
+      }
+  
       let searchableQueryData;
       try {
         searchableQueryData = JSON.parse(responseText);
       } catch (parseError) {
         console.error('Error parsing JSON:', parseError);
-        throw new Error(`Invalid JSON response: ${responseText}`);
+        console.log('Invalid JSON:', responseText);
+        throw new Error('Failed to parse API response');
       }
-
+  
       console.log('Parsed response:', searchableQueryData);
-
+  
       if (!searchableQueryData || !searchableQueryData.answer) {
         throw new Error(`Unexpected response format: ${JSON.stringify(searchableQueryData)}`);
       }
-
+  
       const searchableQuery = searchableQueryData.answer.trim().replace(' site:arxiv.org', '');
       console.log("Generated searchable query:", searchableQuery);
+  
 
       const arxivSources = await fetchSources(searchableQuery);
       console.log('arXiv sources fetched:', arxivSources.length);
@@ -148,14 +149,19 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
 
       const sourcesWithSummaries = await Promise.all(allSources.map(async (source) => {
         if (source.text && apiKey) {
-          const summary = await GPTSummary(source.text, apiKey);
-          return { ...source, summary };
+          try {
+            const summary = await GPTSummary(source.text, apiKey);
+            return { ...source, summary };
+          } catch (error) {
+            console.error("Error generating summary for source:", source.title, error);
+            return { ...source, summary: "Error generating summary" };
+          }
         }
         return { ...source, summary: "No summary available" };
       }));
   
       await handleStream(sourcesWithSummaries);
-      } catch (error: unknown) {
+    } catch (error) {
       console.error('Error in handleSearch:', error);
       setLoading(false);
       if (error instanceof Error) {
@@ -169,10 +175,10 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
   const handleStream = async (sources: Source[]) => {
     try {
       const prompt = endent`Provide an extensive and detailed, but concise summary/synthesis of the arXiv and PubMed papers related to the query "${query}". Be original, concise, accurate, and helpful. Cite sources as [1], [2], [3] , ..., etc. after each sentence to back up your answer.
-
+  
       ${sources.map((source, idx) => `Source [${idx + 1}]:\nTitle: ${source.title}\nSummary: ${source.text}`).join("\n\n")}
       `;
-
+  
       const response = await fetch("/api/answer", {
         method: "POST",
         headers: {
@@ -180,12 +186,12 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
         },
         body: JSON.stringify({ prompt, apiKey })
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || response.statusText);
       }
-
+  
       setLoading(false);
       onSearch({ 
         query, 
@@ -197,18 +203,20 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
       if (!data) {
         throw new Error("No data received from server");
       }
-
+  
       const reader = data.getReader();
       const decoder = new TextDecoder();
       let done = false;
-
+      let accumulatedAnswer = '';
+  
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
         const chunkValue = decoder.decode(value);
-        onAnswerUpdate(chunkValue);
+        accumulatedAnswer += chunkValue;
+        onAnswerUpdate(accumulatedAnswer);
       }
-
+  
       onDone(true);
     } catch (err) {
       console.error("Error in handleStream:", err);
@@ -216,6 +224,8 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
       onAnswerUpdate(`Error: ${err instanceof Error ? err.message : "Unknown error occurred"}`);
     }
   };
+  
+  
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {

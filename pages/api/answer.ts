@@ -5,11 +5,18 @@ export const config = {
 };
 
 const handler = async (req: Request): Promise<Response> => {
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   try {
-    const { prompt, apiKey } = (await req.json()) as {
-      prompt: string;
-      apiKey: string;
-    };
+    const body = await req.json();
+    console.log("Received request body:", JSON.stringify(body, null, 2));
+
+    const { prompt, apiKey } = body;
 
     if (!prompt || !apiKey) {
       return new Response(JSON.stringify({ error: "Missing prompt or API key" }), {
@@ -18,37 +25,39 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    try {
-      const stream = await OpenAIStream(prompt, apiKey);
-      const reader = stream.getReader();
-      const decoder = new TextDecoder();
-      let result = '';
-      let done = false;
+    console.log("Calling OpenAIStream");
+    const stream = await OpenAIStream(prompt, apiKey);
+    console.log("Stream received");
 
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        result += decoder.decode(value);
-      }
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let result = '';
 
-      return new Response(JSON.stringify({ answer: result }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (streamError) {
-      console.error("Error in OpenAIStream:", streamError);
-      return new Response(JSON.stringify({ error: "Error generating stream" }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      result += decoder.decode(value);
     }
+
+    console.log("Result:", result);
+
+    return new Response(JSON.stringify({ answer: result }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   } catch (error) {
     console.error("Error in handler:", error);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
+    return new Response(JSON.stringify({ 
+      error: "Internal server error", 
+      details: error.message,
+      stack: error.stack
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 };
+
+
 
 export default handler;

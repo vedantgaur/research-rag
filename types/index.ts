@@ -18,3 +18,10 @@ export type SearchQuery = {
   sourceLinks: string[];
   sourcesWithSummaries: (Source & { summary: string })[];
 };
+
+export type ChatMessage = {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+};
+
+
