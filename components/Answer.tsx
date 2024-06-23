@@ -1,7 +1,6 @@
 import { SearchQuery, Source } from "@/types";
 import { IconReload } from "@tabler/icons-react";
 import { FC, useEffect, useState } from "react";
-import TwitterFeed from "./TwitterFeed";
 
 interface AnswerProps {
   searchQuery: SearchQuery;
@@ -75,57 +74,62 @@ export const Answer: FC<AnswerProps> = ({ searchQuery, answer, done, onReset }) 
   };
 
   return (
-    <div className="flex max-w-[1400px] w-full mx-auto space-x-4 py-16 px-4 sm:px-8">
-      <div className="flex-grow max-w-[900px]">
-        <div className="overflow-auto text-2xl sm:text-4xl mb-4">{searchQuery.query}</div>
+    <div className="flex-grow max-w-[900px]">
+      <div className="overflow-auto text-2xl sm:text-4xl mb-4">{searchQuery.query}</div>
 
-        <div className="border-b border-zinc-800 pb-4">
-          <div className="text-md text-blue-500">Answer</div>
-          <div className="mt-2 overflow-auto answer-content">
-            {formattedAnswer}
-          </div>
+      <div className="border-b border-zinc-800 pb-4">
+        <div className="text-md text-blue-500">Answer</div>
+        <div className="mt-2 overflow-auto answer-content">
+          {formattedAnswer}
         </div>
+      </div>
 
-        {done && (
-          <>
-            <div className="border-b border-zinc-800 pb-4">
-              <div className="text-md text-blue-500 mb-2">Sources</div>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <tbody>
-                    {searchQuery.sourcesWithSummaries.map((source: Source, index: number) => (
-                      <tr key={index} className="border-b border-zinc-800">
-                        <td className="py-2 pr-4 align-top">
-                          <a
-                            className="hover:underline text-blue-500"
-                            href={source.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {source.title}
-                          </a>
-                        </td>
-                        <td className="py-2 text-sm">{source.summary || "No summary available"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+      {done && (
+        <>
+          <div className="border-b border-zinc-800 pb-4 mt-4">
+            <div className="text-md text-blue-500 mb-2">Sources</div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-zinc-800">
+                    <th className="py-2 px-4 text-left">Title</th>
+                    <th className="py-2 px-4 text-left">Summary</th>
+                    <th className="py-2 px-4 text-left">Citations</th>
+                    <th className="py-2 px-4 text-left">Publish Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {searchQuery.sourcesWithSummaries.map((source: Source, index: number) => (
+                    <tr key={index} className="border-b border-zinc-800">
+                      <td className="py-2 px-4 align-top">
+                        <a
+                          className="hover:underline text-blue-500"
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {source.title}
+                        </a>
+                      </td>
+                      <td className="py-2 px-4 text-sm">{source.summary || "No summary available"}</td>
+                      <td className="py-2 px-4 text-sm">{source.citations !== undefined ? source.citations : "N/A"}</td>
+                      <td className="py-2 px-4 text-sm">{source.publishDate || "N/A"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          </div>
 
-            <button
-              className="flex h-10 w-52 items-center justify-center rounded-full bg-blue-500 p-2 hover:cursor-pointer hover:bg-blue-600 mt-4"
-              onClick={onReset}
-            >
-              <IconReload size={18} />
-              <div className="ml-2">New Search</div>
-            </button>
-          </>
-        )}
-      </div>
-      <div className="w-[300px] hidden lg:block">
-        <TwitterFeed query={searchQuery.query} />
-      </div>
+          <button
+            className="flex h-10 w-52 items-center justify-center rounded-full bg-blue-500 p-2 hover:cursor-pointer hover:bg-blue-600 mt-4"
+            onClick={onReset}
+          >
+            <IconReload size={18} />
+            <div className="ml-2">New Search</div>
+          </button>
+        </>
+      )}
     </div>
   );
 };

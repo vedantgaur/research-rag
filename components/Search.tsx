@@ -26,21 +26,25 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
       const response = await axios.get(`http://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=5`);
       const xml = response.data;
       const $ = cheerio.load(xml, { xmlMode: true });
-  
+
       const sources: Source[] = [];
-  
+
       $('entry').each((index, element) => {
         const title = $(element).find('title').text().trim();
         const summary = $(element).find('summary').text().trim();
         const url = $(element).find('id').text().trim();
-  
+        const publishDate = new Date($(element).find('published').text().trim()).toLocaleDateString();
+        const citations = Math.floor(Math.random() * 100); // Placeholder for citations
+
         sources.push({
           title,
           url,
-          text: `${title}\n\n${summary}`
+          text: `${title}\n\n${summary}`,
+          publishDate,
+          citations
         });
       });
-  
+
       console.log('arXiv response:', sources);
       return sources;
     } catch (error) {
@@ -57,23 +61,27 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
       console.log('Fetching PubMed sources for query:', query);
       const searchResponse = await axios.get(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(query)}&retmax=5&format=json`);
       const ids: string[] = searchResponse.data.esearchresult.idlist;
-  
+
       if (ids.length === 0) {
         return [];
       }
-  
+
       const summaryResponse = await axios.get(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${ids.join(',')}&format=json`);
       const results = summaryResponse.data.result;
-  
+
       const sources: Source[] = ids.map((id: string) => {
         const article = results[id];
+        const publishDate = new Date(article.pubdate).toLocaleDateString();
+        const citations = Math.floor(Math.random() * 100); // Placeholder for citations
         return {
           title: article.title,
           url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`,
-          text: `${article.title}\n\n${article.abstract || 'No abstract available'}`
+          text: `${article.title}\n\n${article.abstract || 'No abstract available'}`,
+          publishDate,
+          citations
         };
       });
-  
+
       console.log('PubMed response:', sources);
       return sources;
     } catch (error) {
@@ -90,17 +98,17 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
       alert("Please enter a query");
       return;
     }
-  
+
     setLoading(true);
     try {
       console.log('Starting search for query:', query);
-      
+
       const searchableQueryPrompt = `Convert the following user query into a concise, keyword-rich search query suitable for searching academic papers on arXiv:
       
       User query: "${query}"
       
       Searchable query:`;
-  
+
       const searchableQueryResponse = await fetch("/api/answer", {
         method: "POST",
         headers: {
@@ -108,14 +116,14 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
         },
         body: JSON.stringify({ prompt: searchableQueryPrompt, apiKey })
       });
-  
+
       const responseText = await searchableQueryResponse.text();
       console.log('Raw API Response:', responseText);
-  
+
       if (!searchableQueryResponse.ok) {
         throw new Error(`Failed to generate searchable query: ${searchableQueryResponse.status} ${searchableQueryResponse.statusText}\n${responseText}`);
       }
-  
+
       let searchableQueryData;
       try {
         searchableQueryData = JSON.parse(responseText);
@@ -124,16 +132,15 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
         console.log('Invalid JSON:', responseText);
         throw new Error('Failed to parse API response');
       }
-  
+
       console.log('Parsed response:', searchableQueryData);
-  
+
       if (!searchableQueryData || !searchableQueryData.answer) {
         throw new Error(`Unexpected response format: ${JSON.stringify(searchableQueryData)}`);
       }
-  
+
       const searchableQuery = searchableQueryData.answer.trim().replace(' site:arxiv.org', '');
       console.log("Generated searchable query:", searchableQuery);
-  
 
       const arxivSources = await fetchSources(searchableQuery);
       console.log('arXiv sources fetched:', arxivSources.length);
@@ -159,7 +166,8 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
         }
         return { ...source, summary: "No summary available" };
       }));
-  
+
+      console.log('Sources with summaries:', sourcesWithSummaries);
       await handleStream(sourcesWithSummaries);
     } catch (error) {
       console.error('Error in handleSearch:', error);
@@ -178,7 +186,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
   
       ${sources.map((source, idx) => `Source [${idx + 1}]:\nTitle: ${source.title}\nSummary: ${source.text}`).join("\n\n")}
       `;
-  
+
       const response = await fetch("/api/answer", {
         method: "POST",
         headers: {
@@ -186,29 +194,33 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
         },
         body: JSON.stringify({ prompt, apiKey })
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || response.statusText);
       }
-  
+
       setLoading(false);
       onSearch({ 
         query, 
         sourceLinks: sources.map((source) => source.url), 
-        sourcesWithSummaries: sources
+        sourcesWithSummaries: sources.map(source => ({
+          ...source,
+          citations: source.citations !== undefined ? source.citations : 'N/A',
+          publishDate: source.publishDate || 'N/A'
+        }))
       });
-    
+
       const data = response.body;
       if (!data) {
         throw new Error("No data received from server");
       }
-  
+
       const reader = data.getReader();
       const decoder = new TextDecoder();
       let done = false;
       let accumulatedAnswer = '';
-  
+
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
@@ -216,7 +228,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
         accumulatedAnswer += chunkValue;
         onAnswerUpdate(accumulatedAnswer);
       }
-  
+
       onDone(true);
     } catch (err) {
       console.error("Error in handleStream:", err);
@@ -224,8 +236,6 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
       onAnswerUpdate(`Error: ${err instanceof Error ? err.message : "Unknown error occurred"}`);
     }
   };
-  
-  
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -248,7 +258,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
         <div className="mx-auto flex h-full w-full max-w-[750px] flex-col items-center space-y-6 px-3 pt-32 sm:pt-64">
           <div className="flex items-center">
             <IconBolt size={36} />
-            <div className="ml-1 text-center text-4xl">Research RAG</div>
+            <div className="ml-1 text-center text-4xl">RAG: Research Augmented Generation</div>
           </div>
 
           <div className="relative w-full">

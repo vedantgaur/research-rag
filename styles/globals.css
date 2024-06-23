@@ -127,3 +127,54 @@
     }
   }      
   
+  .chat-box, .twitter-box {
+    background-color: #2A2A31;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .chat-box {
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .twitter-box {
+    margin-bottom: 16px;
+  }
+  
+  .chat-box, .twitter-box {
+    background-color: #2A2A31;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .chat-box {
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .twitter-box {
+    margin-bottom: 16px;
+  }
+  
+  .sources-table th, .sources-table td {
+    padding: 12px;
+    text-align: left;
+  }
+  
+  .sources-table th {
+    background-color: #333;
+    color: white;
+  }
+  
+  .sources-table td {
+    background-color: #222;
+    color: white;
+  }
+  
+    
+  

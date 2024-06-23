@@ -25,12 +25,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chatHistory, onSen
   };
 
   return (
-    <div className="mt-8 border-t border-zinc-700 pt-8">
+    <div className="h-full flex flex-col">
       <h2 className="text-2xl mb-4">Chat about the research</h2>
-      <div className="h-64 overflow-auto mb-4 p-4 bg-zinc-800 rounded">
+      <div className="flex-grow overflow-auto mb-4 p-4 bg-zinc-700 rounded">
         {chatHistory.map((msg, index) => (
           <div key={index} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-            <span className={`inline-block p-2 rounded ${msg.role === 'user' ? 'bg-blue-500' : 'bg-zinc-700'}`}>
+            <span className={`inline-block p-2 rounded ${msg.role === 'user' ? 'bg-blue-500' : 'bg-zinc-600'}`}>
               {msg.content}
             </span>
           </div>

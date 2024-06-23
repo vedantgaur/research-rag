@@ -16,7 +16,7 @@ export const OpenAIStream = async (prompt: string | ChatMessage[], apiKey: strin
   }
 
   const requestBody = {
-    model: OpenAIModel.DAVINCI_TURBO,
+    model: OpenAIModel.GPT4,
     messages: messages,
     temperature: 0.7,
     stream: true
