@@ -103,7 +103,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
     try {
       console.log('Starting search for query:', query);
 
-      const searchableQueryPrompt = `Convert the following user query into a concise, keyword-rich search query suitable for searching academic papers on arXiv:
+      const searchableQueryPrompt = `If the user enters a concise concept query, leave it as is, do not append or delete content. Otherwise, convert the following user query into a concise, keyword-rich search query suitable for searching academic papers on arXiv. Do not append "in academic papers" to the end of the query. If it's an author name, leave it as is. LLM refers to large language model, feel free to leave it as is (as with other acronyms):
       
       User query: "${query}"
       
